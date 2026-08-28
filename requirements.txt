@@ -2,3 +2,5 @@ streamlit
 mne
 mne-nirs
 matplotlib
+scipy
+numpy
