@@ -78,7 +78,7 @@ if uploaded_file is not None:
 
         # Event extraction & Epoching
         st.subheader("4. Event-Related Averages (ERA)")
-        events, event_dict = mne.events_from_annotations(raw_haemo)
+        events, event_dict = mne.events_from_annotations(raw_haemo, event_repeated='drop')
 
         if len(events) == 0:
             st.warning("No events or annotations found in the SNIRF file.")
