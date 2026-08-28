@@ -78,7 +78,8 @@ if uploaded_file is not None:
 
         # Event extraction & Epoching
         st.subheader("4. Event-Related Averages (ERA)")
-        events, event_dict = mne.events_from_annotations(raw_haemo, event_repeated='drop')
+        # Extract events normally (no event_repeated parameter here)
+        events, event_dict = mne.events_from_annotations(raw_haemo)
 
         if len(events) == 0:
             st.warning("No events or annotations found in the SNIRF file.")
@@ -94,6 +95,7 @@ if uploaded_file is not None:
                     "Epoch End (tmax in seconds)", value=30.0, step=1.0
                 )
 
+            # Create epochs and handle duplicate markers with event_repeated='drop'
             epochs = mne.Epochs(
                 raw_haemo,
                 events,
@@ -103,6 +105,7 @@ if uploaded_file is not None:
                 baseline=(None, 0),
                 preload=True,
                 verbose=False,
+                event_repeated='drop' 
             )
 
             # Identify source-detector pairs
