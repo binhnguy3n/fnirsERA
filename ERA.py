@@ -42,15 +42,42 @@ if uploaded_file is not None:
                 st.error("Unrecognized fNIRS channel types in file.")
                 st.stop()
 
-        # Display continuous data plot
-        st.subheader("2. Continuous Data (Concentration Changes)")
+        # Marker / Annotation Duration Configuration
+        st.subheader("2. Event & Marker Settings")
+        if len(raw_haemo.annotations) > 0:
+            marker_duration = st.number_input(
+                "Condition / Marker Duration (seconds)",
+                min_value=0.0,
+                max_value=120.0,
+                value=1.0,
+                step=0.5,
+                help="Adjusts the duration for all event annotations (default is set to 1.0s).",
+            )
+
+            # Update annotation durations in the raw object
+            current_annot = raw_haemo.annotations
+            updated_annot = mne.Annotations(
+                onset=current_annot.onset,
+                duration=[marker_duration] * len(current_annot),
+                description=current_annot.description,
+                orig_time=current_annot.orig_time,
+            )
+            raw_haemo.set_annotations(updated_annot)
+            st.info(
+                f"Updated {len(updated_annot)} event markers to duration: {marker_duration}s"
+            )
+        else:
+            st.warning("No annotations found in this file.")
+
+        # Continuous data view
+        st.subheader("3. Continuous Data (Concentration Changes)")
         with st.expander("Show Continuous Data Plot", expanded=False):
             fig_raw = raw_haemo.plot(n_channels=20, duration=60, show=False)
             st.pyplot(fig_raw)
             plt.close(fig_raw)
 
         # Event extraction & Epoching
-        st.subheader("3. Event-Related Averages (ERA)")
+        st.subheader("4. Event-Related Averages (ERA)")
         events, event_dict = mne.events_from_annotations(raw_haemo)
 
         if len(events) == 0:
@@ -59,9 +86,13 @@ if uploaded_file is not None:
             # Epoching controls
             col_t1, col_t2 = st.columns(2)
             with col_t1:
-                tmin = st.number_input("Epoch Start (tmin in seconds)", value=-5.0, step=1.0)
+                tmin = st.number_input(
+                    "Epoch Start (tmin in seconds)", value=-5.0, step=1.0
+                )
             with col_t2:
-                tmax = st.number_input("Epoch End (tmax in seconds)", value=30.0, step=1.0)
+                tmax = st.number_input(
+                    "Epoch End (tmax in seconds)", value=30.0, step=1.0
+                )
 
             epochs = mne.Epochs(
                 raw_haemo,
@@ -94,7 +125,9 @@ if uploaded_file is not None:
             # Selection widgets
             col_cond, col_chan = st.columns(2)
             with col_cond:
-                selected_event = st.selectbox("Select Condition", list(event_dict.keys()))
+                selected_event = st.selectbox(
+                    "Select Condition", list(event_dict.keys())
+                )
             with col_chan:
                 selected_sd = st.selectbox("Select Source-Detector Channel", sd_pairs)
 
@@ -104,19 +137,25 @@ if uploaded_file is not None:
 
             if ch_hbo in epochs.ch_names and ch_hbr in epochs.ch_names:
                 # Extract epoch data (scaled from M to µM)
-                data_hbo = epochs[selected_event].get_data(picks=ch_hbo)[:, 0, :] * 1e6
-                data_hbr = epochs[selected_event].get_data(picks=ch_hbr)[:, 0, :] * 1e6
+                data_hbo = (
+                    epochs[selected_event].get_data(picks=ch_hbo)[:, 0, :] * 1e6
+                )
+                data_hbr = (
+                    epochs[selected_event].get_data(picks=ch_hbr)[:, 0, :] * 1e6
+                )
                 times = epochs.times
 
                 # Calculate Mean and Standard Error (SEM)
                 mean_hbo, sem_hbo = np.mean(data_hbo, axis=0), sem(data_hbo, axis=0)
                 mean_hbr, sem_hbr = np.mean(data_hbr, axis=0), sem(data_hbr, axis=0)
 
-                # Figure styling matching the paper layout
+                # Figure styling matching paper layout
                 fig, ax = plt.subplots(figsize=(6, 3.8), dpi=120)
 
                 # Plot HbO (Red)
-                ax.plot(times, mean_hbo, color="#D9381E", label="HbO", linewidth=2.2)
+                ax.plot(
+                    times, mean_hbo, color="#D9381E", label="HbO", linewidth=2.2
+                )
                 ax.fill_between(
                     times,
                     mean_hbo - sem_hbo,
@@ -126,7 +165,9 @@ if uploaded_file is not None:
                 )
 
                 # Plot HbR (Blue)
-                ax.plot(times, mean_hbr, color="#0080C0", label="HbR", linewidth=2.2)
+                ax.plot(
+                    times, mean_hbr, color="#0080C0", label="HbR", linewidth=2.2
+                )
                 ax.fill_between(
                     times,
                     mean_hbr - sem_hbr,
@@ -146,7 +187,7 @@ if uploaded_file is not None:
                 ax.spines["top"].set_visible(False)
                 ax.spines["right"].set_visible(False)
 
-                # Match clean legend style
+                # Clean legend style
                 ax.legend(frameon=False, loc="upper right", fontsize=9)
                 plt.tight_layout()
 
